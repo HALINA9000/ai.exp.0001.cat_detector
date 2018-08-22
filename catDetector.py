@@ -21,7 +21,7 @@ train_x, train_y, test_x, test_y = load_data()
 """ Find most efficient batch size. """
 
 # Model compile variables
-lr=0.005
+lr = 0.005
 # Model fitting variables
 path = ''
 title = ''
@@ -50,18 +50,22 @@ print("\nMost efficient batch size is:", batch_size)
 #%%
 """ Asssignment in Keras. """
 
+# Model compile variables
+lr = 0.005
 # Model fitting variables
 path = 'originalAssignment\\'
 title = 'Original course assignment result'
-epochs = 2000
-
+epochs = 1500
+time_start = time.time()
 model = model_define(train_x.shape[1])
 model = model_compile(model, lr=lr)
-_, history = model_fit(model, train_x, train_y, test_x, test_y,
+model, history = model_fit(model, train_x, train_y, test_x, test_y,
                        path, title,
                        epochs=epochs, batch_size=batch_size)
+time_end = time.time() - time_start
+print('Training time: %4.2f sec.' % (time_end))
 history_set = [history]
-history_plot(history_set, path, title, acc=True, val_acc=True)
+history_plot(history_set, path, title, acc=True, val_acc=True, show=True)
 
 #%%
 """ Datasets discussion. """
@@ -88,19 +92,33 @@ print('Cat images in testing set: %2d%% (%2d/%2d).' % (test_pcnt,
                                                        test_size))
 
 #%%
-""" Hyperparameter tuning.
-"""
-# Model compilation variables
-lr = 0.0001
-# Model fitting variables
-path = 'lrTuning\\'
-title = 'Learning rate: ' + str(lr)
-epochs = 100000
+""" Sampling hypersurface with random initialization (uniform). """
 
-model = model_define(train_x.shape[1])
-model = model_compile(model, lr=lr)
-_, history = model_fit(model, train_x, train_y, test_x, test_y,
-                       path, title,
-                       epochs=epochs, batch_size=batch_size)
-history_set = [history]
-history_plot(history_set, path, title, acc=True, val_acc=True)
+# Model define variables
+initializer = 'random_uniform'
+# Model fitting variables
+cb_checkpointer = [True, True, 'acc', True, True, 'max']
+cb_stopper = [True, 1000]
+path = 'samplingHypersurface\\'
+epochs = 3000
+verbose = 0
+
+history_set = []
+
+for i in range(1, 101):
+    time_start = time.time()
+    
+    i_str = (3 - int(np.log10(i))) * '0' + str(i)
+    title = 'sampling iteration: ' + i_str
+    model = model_define(train_x.shape[1], initializer=initializer)
+    model = model_compile(model, lr=lr)
+    model, history = model_fit(model, train_x, train_y, test_x, test_y,
+                           path, title,
+                           epochs=epochs, batch_size=batch_size,
+                           cb_checkpointer=cb_checkpointer,
+                           verbose=verbose)
+    time_end = time.time() - time_start
+    print('Iteration %d, training time: %4.2f sec.' % (i, time_end))
+    history_set += [[i, history]]
+title = 'sampling hypersurface'
+history_plot(history_set, path, title, acc=True, val_acc=True, show=True)

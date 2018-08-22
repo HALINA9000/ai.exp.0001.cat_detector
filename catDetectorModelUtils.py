@@ -9,7 +9,7 @@ from keras.models import Sequential
 from keras.layers import Dense
 from keras.initializers import RandomUniform
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
-from keras.optimizers import TFOptimizer
+from keras.optimizers import Adam, TFOptimizer
 #from keras import regularizers
 
 
@@ -26,7 +26,7 @@ def model_define(input_dim, initializer='zeros', activation='sigmoid'):
     """
     
     if initializer == 'random_uniform':
-        RandomUniform(minval=-1.0, maxval=1.0, seed=None)
+        initializer = RandomUniform(minval=-1.0, maxval=1.0, seed=None)
     model = Sequential()
     # single neuron model definition
     model.add(Dense(1,
@@ -51,6 +51,7 @@ def model_compile(model, loss='binary_crossentropy', lr=0.005):
     Returns:
         model: Compiled model.
     """
+
     optimizer = TFOptimizer(tf.train.GradientDescentOptimizer(lr))
     model.compile(loss=loss,
                   optimizer=optimizer,
@@ -64,8 +65,7 @@ def model_fit(model, train_x, train_y, test_x, test_y,
               cb_stopper=[False],
               cb_checkpointer=[False],
               cb_reduce_lr=[False],
-              verbose=0,
-              prefix=False):
+              verbose=0):
     """ Model fitting
 
     Arguments:
@@ -84,7 +84,8 @@ def model_fit(model, train_x, train_y, test_x, test_y,
             Default: [False].
         cb_checkpointer (list): List of checkpointer callback parameters.
             First element determines if checkpointer has to be used.
-            [True/False, save_best_only, save_weights_only, mode].
+            [True/False, prefix, monitor, save_best_only, save_weights_only, 
+            mode].
             Default: [False].
         cb_reduce_lr (list): List of reduce_lr callback parameters for
             ReduceLROnPlateau.
@@ -93,8 +94,6 @@ def model_fit(model, train_x, train_y, test_x, test_y,
             Default: [False].
         verbose: 0, 1 or 2. Verbosity mode.
             0 = silent, 1 = progress bar, 2 = one line per epoch.
-        prefix (boolean): Defines if metrics should be added to checkpointer
-            callback h5 files.
 
     Returns:
         model: Fitted model.
@@ -106,7 +105,7 @@ def model_fit(model, train_x, train_y, test_x, test_y,
         stopper = EarlyStopping(monitor='acc', patience=cb_stopper[1])
         callbacks.append(stopper)
     if cb_checkpointer[0]:
-        if prefix:
+        if cb_checkpointer[1]:
             metrics = '{acc:.4f}-{val_acc:.4f}-'
         else:
             metrics = ''
@@ -114,10 +113,10 @@ def model_fit(model, train_x, train_y, test_x, test_y,
         title = title.replace(' ', '-')
         file = path + metrics + title + '.h5'
         checkpointer = ModelCheckpoint(filepath=file,
-                                       monitor='acc',
-                                       save_best_only=cb_checkpointer[1],
-                                       save_weights_only=cb_checkpointer[2],
-                                       mode=cb_checkpointer[3])
+                                       monitor=cb_checkpointer[2],
+                                       save_best_only=cb_checkpointer[3],
+                                       save_weights_only=cb_checkpointer[4],
+                                       mode=cb_checkpointer[5])
         callbacks.append(checkpointer)
     if cb_reduce_lr[0]:
         reduce_lr = ReduceLROnPlateau(monitor='acc',
