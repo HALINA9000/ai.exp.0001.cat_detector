@@ -20,15 +20,13 @@ train_x, train_y, test_x, test_y = load_data()
 #%%
 """ Find most efficient batch size. """
 
-# Model compile variables
-lr = 0.005
 # Model fitting variables
 path = ''
 title = ''
 epochs = 200
 
 model = model_define(train_x.shape[1])
-model = model_compile(model, lr=lr)
+model = model_compile(model)
 
 # Maximum batch size
 batch_size_limit = int(np.log2(train_x.shape[0])) + 1
@@ -50,21 +48,19 @@ print("\nMost efficient batch size is:", batch_size)
 #%%
 """ Asssignment in Keras. """
 
-# Model compile variables
-lr = 0.005
 # Model fitting variables
 path = 'originalAssignment\\'
 title = 'Original course assignment result'
 epochs = 1500
 time_start = time.time()
 model = model_define(train_x.shape[1])
-model = model_compile(model, lr=lr)
+model = model_compile(model)
 model, history = model_fit(model, train_x, train_y, test_x, test_y,
                        path, title,
                        epochs=epochs, batch_size=batch_size)
 time_end = time.time() - time_start
 print('Training time: %4.2f sec.' % (time_end))
-history_set = [history]
+history_set = [[0, history]]
 history_plot(history_set, path, title, acc=True, val_acc=True, show=True)
 
 #%%
@@ -96,29 +92,52 @@ print('Cat images in testing set: %2d%% (%2d/%2d).' % (test_pcnt,
 
 # Model define variables
 initializer = 'random_uniform'
+# Model compule variables
+lr = 0.1
+opt = ['gradient', lr]
 # Model fitting variables
-cb_checkpointer = [True, True, 'acc', True, True, 'max']
-cb_stopper = [True, 1000]
+cb_tensorboard = [True, 'C:\\logs\\catDetector\\']
+cb_checkpointer = [True, 'va', 'acc', True, True, 'max']
+cb_stopper = [False]
 path = 'samplingHypersurface\\'
-epochs = 3000
+epochs = 1000
 verbose = 0
 
 history_set = []
 
-for i in range(1, 101):
+for i in range(1, 2):
     time_start = time.time()
     
     i_str = (3 - int(np.log10(i))) * '0' + str(i)
     title = 'sampling iteration: ' + i_str
     model = model_define(train_x.shape[1], initializer=initializer)
-    model = model_compile(model, lr=lr)
+    model = model_compile(model, opt=opt)
     model, history = model_fit(model, train_x, train_y, test_x, test_y,
                            path, title,
                            epochs=epochs, batch_size=batch_size,
+                           cb_tensorboard=cb_tensorboard,
                            cb_checkpointer=cb_checkpointer,
                            verbose=verbose)
     time_end = time.time() - time_start
-    print('Iteration %d, training time: %4.2f sec.' % (i, time_end))
+    print('Iteration %d, training time: %.2f sec.' % (i, time_end))
     history_set += [[i, history]]
 title = 'sampling hypersurface'
 history_plot(history_set, path, title, acc=True, val_acc=True, show=True)
+
+#%%
+""" Loads previously saved weight and bias from h5 file
+
+Args:
+    path (str): path with name of h5 file to load
+
+Returns:
+    kernel (np.array(float)): saved content of neuron
+    bias (np.array(float)): saved bias
+"""
+
+import h5py
+h5f = h5py.File(path + '.h5', 'r')
+list_of_names = []
+h5f.visit(list_of_names.append)
+bias = h5f[list_of_names[2]].value
+kernel = h5f[list_of_names[3]].value

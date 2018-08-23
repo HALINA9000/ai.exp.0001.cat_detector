@@ -9,8 +9,10 @@ from keras.models import Sequential
 from keras.layers import Dense
 from keras.initializers import RandomUniform
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+from keras.callbacks import TensorBoard
 from keras.optimizers import Adam, TFOptimizer
 #from keras import regularizers
+from time import time
 
 
 def model_define(input_dim, initializer='zeros', activation='sigmoid'):
@@ -37,7 +39,7 @@ def model_define(input_dim, initializer='zeros', activation='sigmoid'):
     return model
 
 
-def model_compile(model, loss='binary_crossentropy', lr=0.005):
+def model_compile(model, loss='binary_crossentropy', opt=['gradient', 0.005]):
     """ Compiles previously defined model
 
     Arguments:
@@ -52,7 +54,10 @@ def model_compile(model, loss='binary_crossentropy', lr=0.005):
         model: Compiled model.
     """
 
-    optimizer = TFOptimizer(tf.train.GradientDescentOptimizer(lr))
+    if opt[0] == 'gradient':
+        optimizer = TFOptimizer(tf.train.GradientDescentOptimizer(opt[1]))
+    else:
+        optimizer = Adam(lr=opt[1], decay=opt[2])
     model.compile(loss=loss,
                   optimizer=optimizer,
                   metrics=['accuracy'])
@@ -62,6 +67,7 @@ def model_compile(model, loss='binary_crossentropy', lr=0.005):
 def model_fit(model, train_x, train_y, test_x, test_y,
               path, title,
               epochs, batch_size,
+              cb_tensorboard=[False],
               cb_stopper=[False],
               cb_checkpointer=[False],
               cb_reduce_lr=[False],
@@ -78,6 +84,10 @@ def model_fit(model, train_x, train_y, test_x, test_y,
         title (str): Common string in file names.
         epochs (int): Number of epochs.
         batch_size (int): Size of batch when fitting.
+        cb_tensorboard (list): List of tensorboard parameters:
+            First element determines if stopper has to be used.
+            [True/False, path].
+            Default: [False].
         cb_stopper (list): List of stopper callback parameters.
             First element determines if stopper has to be used.
             [True/False, patience].
@@ -100,13 +110,20 @@ def model_fit(model, train_x, train_y, test_x, test_y,
         history: History of model.
     """
     # define callbacks set
+    
     callbacks = []
+    if cb_tensorboard[0]:
+        log_dir = cb_tensorboard[1] + '{}'
+        tensorboard = TensorBoard(log_dir=log_dir.format(time()))
+        callbacks.append(tensorboard)
     if cb_stopper[0]:
         stopper = EarlyStopping(monitor='acc', patience=cb_stopper[1])
         callbacks.append(stopper)
     if cb_checkpointer[0]:
-        if cb_checkpointer[1]:
-            metrics = '{acc:.4f}-{val_acc:.4f}-'
+        if cb_checkpointer[1] == 'av':
+            metrics = '{acc:.2f}-{val_acc:.2f}-'
+        elif cb_checkpointer[1] == 'va':
+            metrics = '{val_acc:.2f}-{acc:.2f}-'
         else:
             metrics = ''
         title = title.replace(':', '')

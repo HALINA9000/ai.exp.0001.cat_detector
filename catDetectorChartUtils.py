@@ -38,7 +38,7 @@ def history_plot(history_set, path, title,
     # plot 10 ticks on y axis    
     y_tick = (y_max - y_min) / 10.
     
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(5, 5))
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(15, 5))
     
     ax.xaxis.grid(linestyle='dotted', color='#000000')
     ax.yaxis.grid(linestyle='dotted', color='#000000')
