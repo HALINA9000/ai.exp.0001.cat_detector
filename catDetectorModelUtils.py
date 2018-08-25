@@ -4,15 +4,55 @@ Created on Sat Mar 10 15:14:47 2018
 
 @author: tom.s (at) halina9000.com
 """
+import numpy as np
 import tensorflow as tf
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.initializers import RandomUniform
+from keras.callbacks import Callback
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from keras.callbacks import TensorBoard
 from keras.optimizers import Adam, TFOptimizer
+
 #from keras import regularizers
 from time import time
+
+
+class BestAccs(Callback):
+    """Callback that saves model weights after epoch if it is better
+        than previous one.
+
+    # Arguments
+        filepath (str): filepath (file name and directory) for saving
+            weights.
+        min_accs (float): minimum value of both acc and val_acc.
+            Default: 0.0.
+        diff (float): maximum difference between acc and val_acc.
+            Default: 1.0
+    """
+
+    def __init__(self, filepath, min_accs=0.0, diff=1.0):
+        super(BestAccs, self).__init__()
+        self.filepath = filepath
+        self.min_accs = min_accs
+        self.diff = diff
+
+
+    def on_train_begin(self, logs={}):
+        self.best_acc = 0.0
+
+
+    def on_epoch_end(self, epoch, logs={}):
+        acc = logs.get('acc')
+        val_acc = logs.get('val_acc')
+        epoch_acc = np.minimum(acc, val_acc)
+
+        if epoch_acc > np.max(self.best_acc):
+            if np.absolute(acc - val_acc) <= self.diff:
+                self.best_acc = epoch_acc
+                if epoch_acc >= self.min_accs:
+                    filepath = self.filepath.format(epoch_acc, **logs)
+                    self.model.save_weights(filepath, overwrite=True)
 
 
 def model_define(input_dim, initializer='zeros', activation='sigmoid'):
@@ -67,6 +107,7 @@ def model_compile(model, loss='binary_crossentropy', opt=['gradient', 0.005]):
 def model_fit(model, train_x, train_y, test_x, test_y,
               path, title,
               epochs, batch_size,
+              cb_bestaccs=[False],
               cb_tensorboard=[False],
               cb_stopper=[False],
               cb_checkpointer=[False],
@@ -84,7 +125,11 @@ def model_fit(model, train_x, train_y, test_x, test_y,
         title (str): Common string in file names.
         epochs (int): Number of epochs.
         batch_size (int): Size of batch when fitting.
-        cb_tensorboard (list): List of tensorboard parameters:
+        cb_bestaccs (list): list of bestaccs callbacks parameters:
+            First element determines if stopper has to be used.
+            [True/False, min_accs, diff].
+            Default: [False]
+        cb_tensorboard (list): List of tensorboard callback parameters:
             First element determines if stopper has to be used.
             [True/False, path].
             Default: [False].
@@ -109,9 +154,24 @@ def model_fit(model, train_x, train_y, test_x, test_y,
         model: Fitted model.
         history: History of model.
     """
+    # replace some characters in title
+    title = title.replace(':', '')
+    title = title.replace(' ', '-')
     # define callbacks set
-    
     callbacks = []
+    
+    if cb_bestaccs[0]:
+        if cb_bestaccs[1] == 'av':
+            metrics = '{:.3f}-{acc:.2f}-{val_acc:.2f}-'
+        elif cb_bestaccs[1] == 'va':
+            metrics = '{:.3f}-{val_acc:.2f}-{acc:.2f}-'
+        else:
+            metrics = '{:.3f}-'
+        filepath = path + metrics + title + '.h5'
+        best_accs = BestAccs(filepath,
+                             min_accs=cb_bestaccs[2],
+                             diff=cb_bestaccs[3])
+        callbacks.append(best_accs)
     if cb_tensorboard[0]:
         log_dir = cb_tensorboard[1] + '{}'
         tensorboard = TensorBoard(log_dir=log_dir.format(time()))
@@ -126,10 +186,8 @@ def model_fit(model, train_x, train_y, test_x, test_y,
             metrics = '{val_acc:.2f}-{acc:.2f}-'
         else:
             metrics = ''
-        title = title.replace(':', '')
-        title = title.replace(' ', '-')
-        file = path + metrics + title + '.h5'
-        checkpointer = ModelCheckpoint(filepath=file,
+        filepath = path + metrics + title + '.h5'
+        checkpointer = ModelCheckpoint(filepath=filepath,
                                        monitor=cb_checkpointer[2],
                                        save_best_only=cb_checkpointer[3],
                                        save_weights_only=cb_checkpointer[4],

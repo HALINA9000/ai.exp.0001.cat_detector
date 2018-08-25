@@ -13,6 +13,19 @@ from catDetectorModelUtils import model_define, model_compile, model_fit
 from catDetectorChartUtils import history_plot
 
 #%%
+"""
+TODO: display value of all defined variables
+    
+"""
+"""
+def show_vars():
+    if path in locals():
+        var_descr = 'path to store plots and h5 files:'
+        var = 'path'
+        print('{:<40} {}'.format(var_descr, var))
+"""
+
+#%%
 """ Load train and test dataset. """
 
 train_x, train_y, test_x, test_y = load_data()
@@ -96,11 +109,45 @@ initializer = 'random_uniform'
 lr = 0.1
 opt = ['gradient', lr]
 # Model fitting variables
+cb_bestaccs = [True, 'av', 0.85, 0.02]
+path = 'samplingHypersurface\\'
+epochs = 1000
+verbose = 0
+
+history_set = []
+
+for i in range(1, 1000):
+    time_start = time.time()
+    
+    i_str = (3 - int(np.log10(i))) * '0' + str(i)
+    title = 'sampling iteration: ' + i_str
+    model = model_define(train_x.shape[1], initializer=initializer)
+    model = model_compile(model, opt=opt)
+    model, history = model_fit(model, train_x, train_y, test_x, test_y,
+                           path, title,
+                           epochs=epochs, batch_size=batch_size,
+                           cb_bestaccs=cb_bestaccs,
+                           verbose=verbose)
+    time_end = time.time() - time_start
+    print('Iteration %d, training time: %.2f sec.' % (i, time_end))
+    history_set += [[i, history]]
+title = 'sampling hypersurface'
+history_plot(history_set, path, title, acc=True, val_acc=True, show=True)
+
+#%%
+""" Playing with TensorBoard """
+
+# Model define variables
+initializer = 'random_uniform'
+# Model compule variables
+lr = 0.1
+opt = ['gradient', lr]
+# Model fitting variables
 cb_tensorboard = [True, 'C:\\logs\\catDetector\\']
 cb_checkpointer = [True, 'va', 'acc', True, True, 'max']
 cb_stopper = [False]
 path = 'samplingHypersurface\\'
-epochs = 1000
+epochs = 100
 verbose = 0
 
 history_set = []
@@ -115,8 +162,8 @@ for i in range(1, 2):
     model, history = model_fit(model, train_x, train_y, test_x, test_y,
                            path, title,
                            epochs=epochs, batch_size=batch_size,
-                           cb_tensorboard=cb_tensorboard,
-                           cb_checkpointer=cb_checkpointer,
+                           # cb_tensorboard=cb_tensorboard,
+                           # cb_checkpointer=cb_checkpointer,
                            verbose=verbose)
     time_end = time.time() - time_start
     print('Iteration %d, training time: %.2f sec.' % (i, time_end))
