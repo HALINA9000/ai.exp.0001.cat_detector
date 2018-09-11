@@ -7,6 +7,8 @@ Created on Sat Mar 10 13:02:16 2018
 #%%
 """Load libraries."""
 import os
+from itertools import combinations
+import numpy as np
 
 from data import load_data, show_data_stats
 from model import best_batch_size, course_assignment, compare_kernels
@@ -115,3 +117,40 @@ acc_train, acc_test = best_model_evaluate(train_x, train_y, test_x, test_y,
                                           batch_size=batch_size)
 print('Accuracy on training set: %.3f' % acc_train)
 print('Accuracy on test set:     %.3f' % acc_test)
+
+#%%
+"""Analysis of best weights"""
+# Files with accuracy greater equal to 90%
+prefixes = ['0.9', '1.0']
+files_90 = [f for f in files if f[:3] in prefixes]
+
+# Iteration has to be unique
+iterations = []
+files_90_unique = []
+for file in files_90:
+    if file[28:] not in iterations:
+        iterations.append(file[28:])
+        files_90_unique.append(file)
+
+angles = []
+norms = []
+diffs = []
+for file_1, file_2 in combinations(files_90_unique, 2):
+    [norm_1, norm_2, diff], angle = compare_kernels([file_1, file_2],
+                                                     file_output_path)
+    angles.append(angle)
+    norms.append([norm_1, norm_2])
+    diffs.append(diff)
+
+print('Angles between vectors')
+print('Minimum: %.4f' % np.min(angles))
+print('Maximum: %.4f' % np.max(angles), end='\n\n')
+
+print('Norm of vectors')
+print('Minimum: %.4f' % np.min(norms))
+print('Maximum: %.4f' % np.max(norms), end='\n\n')
+
+print('Norm of difference between vectors')
+print('Minimum: %.4f' % np.min(diffs))
+print('Maximum: %.4f' % np.max(diffs))
+
