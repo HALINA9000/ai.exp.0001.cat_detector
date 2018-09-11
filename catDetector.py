@@ -5,186 +5,113 @@ Created on Sat Mar 10 13:02:16 2018
 @author: tom.s (at) halina9000.com
 """
 #%%
-import numpy as np
-import time
+"""Load libraries."""
+import os
 
-from catDetectorDataUtils import load_data
-from catDetectorModelUtils import model_define, model_compile, model_fit
-from catDetectorChartUtils import history_plot
-
-#%%
-"""
-TODO: display value of all defined variables
-    
-"""
-"""
-def show_vars():
-    if path in locals():
-        var_descr = 'path to store plots and h5 files:'
-        var = 'path'
-        print('{:<40} {}'.format(var_descr, var))
-"""
+from data import load_data, show_data_stats
+from model import best_batch_size, course_assignment, compare_kernels
+from model import best_learning_rate, sampling_hypersurface
+from model import best_model_evaluate
+from presentation import history_plot
 
 #%%
-""" Load train and test dataset. """
-
+"""Load datasets"""
 train_x, train_y, test_x, test_y = load_data()
 
 #%%
-""" Find most efficient batch size. """
+"""Show basic statistics for both training and test datasets."""
+cat_percent, cat_amount, set_size = show_data_stats(train_y)
+stat_output = 'Cat images in training set: %2d%% (%2d/%2d).'
+print(stat_output % (cat_percent, cat_amount, set_size))
 
-# Model fitting variables
-path = ''
-title = ''
-epochs = 200
-
-model = model_define(train_x.shape[1])
-model = model_compile(model)
-
-# Maximum batch size
-batch_size_limit = int(np.log2(train_x.shape[0])) + 1
-# Set of batch sizes
-batch_size_set = [2**x for x in range(5, batch_size_limit + 1)]
-# Measeure of execution time for each batch_size
-batch_exe_time = []
-for batch_size in batch_size_set:
-    time_start = time.time()
-    model, history = model_fit(model, train_x, train_y, test_x, test_y,
-                               path, title,
-                               epochs=epochs, batch_size=batch_size)
-    time_end = time.time() - time_start
-    batch_exe_time.append([time_end, batch_size]) # Add new score
-batch_exe_time.sort() # Fastest batch size will be on top.
-batch_size = batch_exe_time[0][1] # Extracting fastest batch size.
-print("\nMost efficient batch size is:", batch_size)
+cat_percent, cat_amount, set_size = show_data_stats(test_y)
+stat_output = 'Cat images in test set: %2d%% (%2d/%2d).'
+print(stat_output % (cat_percent, cat_amount, set_size))
 
 #%%
-""" Asssignment in Keras. """
+"""Determine best batch size."""
+batch_size, batches_exe_time = best_batch_size(train_x, train_y)
 
-# Model fitting variables
-path = 'originalAssignment\\'
-title = 'Original course assignment result'
-epochs = 1500
-time_start = time.time()
-model = model_define(train_x.shape[1])
-model = model_compile(model)
-model, history = model_fit(model, train_x, train_y, test_x, test_y,
-                       path, title,
-                       epochs=epochs, batch_size=batch_size)
-time_end = time.time() - time_start
-print('Training time: %4.2f sec.' % (time_end))
-history_set = [[0, history]]
-history_plot(history_set, path, title, acc=True, val_acc=True, show=True)
+print('%5s %8s' % ('size:', 'time:'))
+print(5 * '-', 8 * '-')
+for exe_time, size in batches_exe_time:
+    print('%5d %8.4f' % (size, exe_time))
+print('Most efficient batch size is:', batch_size)
 
 #%%
-""" Datasets discussion. """
+"""Recreate in Keras original course assignment with its results."""
+file_output_path = 'originalAssignment'
+history = course_assignment(train_x, train_y,
+                            test_x, test_y,
+                            file_output_path,
+                            batch_size=batch_size)
 
-# Training set
-# Size of set
-train_size = train_y.shape[0]
-# Amount of images with cat
-train_amnt = np.sum(train_y)
-# Percent of cat images in training set
-train_pcnt = np.sum(train_y)/len(train_y) * 100
-print('Cat images in training set: %2d%% (%2d/%2d).' % (train_pcnt,
-                                                        train_amnt,
-                                                        train_size))
-# Test set
-# Size of set
-test_size = test_y.shape[0]
-# Amount of images with cat
-test_amnt = np.sum(test_y)
-# Percent of cat images in test set
-test_pcnt = np.sum(test_y)/len(test_y) * 100
-print('Cat images in testing set: %2d%% (%2d/%2d).' % (test_pcnt,
-                                                       test_amnt,
-                                                       test_size))
+chart_title = 'Original course assignment results'
+history_plot([history], file_output_path, chart_title)
 
 #%%
-""" Sampling hypersurface with random initialization (uniform). """
+"""Course assignment with random initialization."""
+history = course_assignment(train_x, train_y,
+                            test_x, test_y,
+                            file_output_path,
+                            initializer='random_uniform',
+                            batch_size=batch_size)
 
-# Model define variables
-initializer = 'random_uniform'
-# Model compule variables
-lr = 0.1
-opt = ['gradient', lr]
-# Model fitting variables
-cb_bestaccs = [True, 'av', 0.85, 0.02]
-path = 'samplingHypersurface\\'
-epochs = 1000
-verbose = 0
-
-history_set = []
-
-for i in range(1, 1000):
-    time_start = time.time()
-    
-    i_str = (3 - int(np.log10(i))) * '0' + str(i)
-    title = 'sampling iteration: ' + i_str
-    model = model_define(train_x.shape[1], initializer=initializer)
-    model = model_compile(model, opt=opt)
-    model, history = model_fit(model, train_x, train_y, test_x, test_y,
-                           path, title,
-                           epochs=epochs, batch_size=batch_size,
-                           cb_bestaccs=cb_bestaccs,
-                           verbose=verbose)
-    time_end = time.time() - time_start
-    print('Iteration %d, training time: %.2f sec.' % (i, time_end))
-    history_set += [[i, history]]
-title = 'sampling hypersurface'
-history_plot(history_set, path, title, acc=True, val_acc=True, show=True)
+chart_title = 'Modified course assignment results'
+history_plot([history], file_output_path, chart_title)
 
 #%%
-""" Playing with TensorBoard """
-
-# Model define variables
-initializer = 'random_uniform'
-# Model compule variables
-lr = 0.1
-opt = ['gradient', lr]
-# Model fitting variables
-cb_tensorboard = [True, 'C:\\logs\\catDetector\\']
-cb_checkpointer = [True, 'va', 'acc', True, True, 'max']
-cb_stopper = [False]
-path = 'samplingHypersurface\\'
-epochs = 100
-verbose = 0
-
-history_set = []
-
-for i in range(1, 2):
-    time_start = time.time()
-    
-    i_str = (3 - int(np.log10(i))) * '0' + str(i)
-    title = 'sampling iteration: ' + i_str
-    model = model_define(train_x.shape[1], initializer=initializer)
-    model = model_compile(model, opt=opt)
-    model, history = model_fit(model, train_x, train_y, test_x, test_y,
-                           path, title,
-                           epochs=epochs, batch_size=batch_size,
-                           # cb_tensorboard=cb_tensorboard,
-                           # cb_checkpointer=cb_checkpointer,
-                           verbose=verbose)
-    time_end = time.time() - time_start
-    print('Iteration %d, training time: %.2f sec.' % (i, time_end))
-    history_set += [[i, history]]
-title = 'sampling hypersurface'
-history_plot(history_set, path, title, acc=True, val_acc=True, show=True)
+"""Find best weights for zero and random initialization saved by BestAccs."""
+suffix = 'zeros.h5'
+weight_zero = [f for f in os.listdir(file_output_path) if f[18:] == suffix]
+best_weight_zero = weight_zero[-1]
+print('Best weight with zero initialization in', best_weight_zero, 'file.')
+suffix = 'random_uniform.h5'
+weight_random = [f for f in os.listdir(file_output_path) if f[18:] == suffix]
+best_weight_random = weight_random[-1]
+print('Best weight with random initialization in', best_weight_random, 'file.')
 
 #%%
-""" Loads previously saved weight and bias from h5 file
+"""Quick review of the result: zero vs. random initialization."""
+norms, angle = compare_kernels([best_weight_zero, best_weight_random],
+                               file_output_path)
 
-Args:
-    path (str): path with name of h5 file to load
+print('Norm of kernel with zeros initialization:  %.4f' % norms[0])
+print('Norm of kernel with random initialization: %.4f' % norms[1])
+print('Norm of vector difference between them:    %.4f' % norms[2])
+print('Angle between kernels (rad):               %.4f' % angle)
 
-Returns:
-    kernel (np.array(float)): saved content of neuron
-    bias (np.array(float)): saved bias
-"""
+#%%
+"""Finding learning rate that gives most unstable charts."""
+lr_set = [0.1, 0.01, 0.001, 0.0001]
+for lr in lr_set:
+    history_set = best_learning_rate(train_x, train_y,
+                                     test_x, test_y,
+                                     lr=lr,
+                                     batch_size=batch_size)
 
-import h5py
-h5f = h5py.File(path + '.h5', 'r')
-list_of_names = []
-h5f.visit(list_of_names.append)
-bias = h5f[list_of_names[2]].value
-kernel = h5f[list_of_names[3]].value
+    file_output_path = 'learningRateTuning'
+    chart_title = 'Learning rate: ' + str(lr)
+    history_plot(history_set, file_output_path, chart_title)
+
+#%%
+"""Sampling hypersurface with random initialization (uniform)."""
+file_output_path = 'samplingHypersurface'
+sampling_hypersurface(train_x, train_y, test_x, test_y,
+                      file_output_path,
+                      batch_size=batch_size,
+                      iterations=1000)
+
+#%%
+"""File with best weights."""
+files = [f for f in os.listdir(file_output_path)]
+files.sort(reverse=True)
+print(files[0])
+
+#%%
+"""Final results of best file."""
+acc_train, acc_test = best_model_evaluate(train_x, train_y, test_x, test_y,
+                                          file_output_path, files[0],
+                                          batch_size=batch_size)
+print('Accuracy on training set: %.3f' % acc_train)
+print('Accuracy on test set:     %.3f' % acc_test)
