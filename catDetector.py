@@ -3,6 +3,13 @@
 Created on Sat Mar 10 13:02:16 2018
 
 @author: tom.s (at) halina9000.com
+
+Caviar strategy in single neuron training - analysis of Coursera cat detector.
+Usage of caviar strategy with Early Stopping.
+
+Wider description in my blog entry:
+http://www.halina9000.com/blog-0002-Results-of-caviar-strategy-in-single-neuron-training-further-analysis-of-Coursera-cat-detector.html
+
 """
 #%%
 """Load libraries."""
@@ -65,11 +72,11 @@ history_plot([history], file_output_path, chart_title)
 #%%
 """Find best weights for zero and random initialization saved by BestAccs."""
 suffix = 'zeros.h5'
-weight_zero = [f for f in os.listdir(file_output_path) if f[18:] == suffix]
+weight_zero = [f for f in os.listdir(file_output_path) if f[15:] == suffix]
 best_weight_zero = weight_zero[-1]
 print('Best weight with zero initialization in', best_weight_zero, 'file.')
 suffix = 'random_uniform.h5'
-weight_random = [f for f in os.listdir(file_output_path) if f[18:] == suffix]
+weight_random = [f for f in os.listdir(file_output_path) if f[15:] == suffix]
 best_weight_random = weight_random[-1]
 print('Best weight with random initialization in', best_weight_random, 'file.')
 
@@ -124,12 +131,12 @@ print('Accuracy on test set:     %.3f' % acc_test)
 prefixes = ['0.9', '1.0']
 files_90 = [f for f in files if f[:3] in prefixes]
 
-# Iteration has to be unique
+# Iteration has to be unique - given iteration sometimes gives multiple files
 iterations = []
 files_90_unique = []
 for file in files_90:
-    if file[28:] not in iterations:
-        iterations.append(file[28:])
+    if file[25:] not in iterations:
+        iterations.append(file[25:])
         files_90_unique.append(file)
 
 angles = []
@@ -153,4 +160,3 @@ print('Maximum: %.4f' % np.max(norms), end='\n\n')
 print('Norm of difference between vectors')
 print('Minimum: %.4f' % np.min(diffs))
 print('Maximum: %.4f' % np.max(diffs))
-

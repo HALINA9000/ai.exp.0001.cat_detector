@@ -10,7 +10,9 @@ from keras.models import Sequential
 from keras.layers import Dense
 from keras.initializers import RandomUniform
 from keras.callbacks import Callback
-from keras.optimizers import TFOptimizer
+from keras.optimizers import TFOptimizer, Adam
+
+from keras import regularizers
 
 from time import time
 import os
@@ -150,7 +152,7 @@ def course_assignment(train_x, train_y, test_x, test_y,
         os.makedirs(file_output_path)
 
     # Define form of h5 file name prefix
-    metrics = '{:.3f}-{acc:.3f}-{val_acc:.3f}'
+    metrics = '{:.2f}-{acc:.2f}-{val_acc:.2f}'
 
     filename = metrics + '-' + initializer + '.h5'
     path_and_filename = os.path.join(file_output_path, '')
